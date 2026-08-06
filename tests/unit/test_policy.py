@@ -79,6 +79,17 @@ def test_mcp_source_blocked(policy):
     assert not d.allowed
 
 
+def test_mcp_source_rejects_ssh_git_url(policy):
+    # SSH-style git URLs (git@host:path) lack "://" and "+", so the scheme
+    # extraction yields the whole string, which is never in the allowlist.
+    # This locks in the security property after the git@ substring check was
+    # narrowed to startswith (it was dead code for this case but the test
+    # prevents future regressions).
+    d = policy.check_mcp_source("git@github.com:evil/repo.git")
+    assert not d.allowed
+    assert "not allowed" in d.reason
+
+
 def test_tool_enabled(policy):
     assert policy.is_tool_enabled("read_file")
     assert not policy.is_tool_enabled("format_disk")
