@@ -110,7 +110,7 @@ class SecurityPolicy:
             return PolicyDecision(False, f"source scheme {scheme!r} not allowed")
         if scheme == "git+https":
             rest = source[len("git+https") :]
-            if not rest.startswith("://") or "git@" in source:
+            if not rest.startswith("://") or source.startswith("git@"):
                 return PolicyDecision(False, "only public https git URLs are allowed")
             # Validate the git host through the egress check (SSRF + allowlist)
             url = source[len("git+") :]  # strip "git+" prefix to get https:// URL
