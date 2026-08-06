@@ -1,0 +1,13 @@
+/usr/bin/python3
+/usr/bin/pip3
+/bin/ls
+/bin/cat
+/bin/grep
+/bin/find
+/bin/mkdir
+/bin/cp
+/bin/mv
+/bin/rm
+/usr/bin/git
+/usr/bin/node
+/usr/bin/npm
