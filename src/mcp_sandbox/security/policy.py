@@ -91,10 +91,15 @@ class SecurityPolicy:
             return PolicyDecision(False, f"cannot resolve host {host!r}")
         for info in infos:
             ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            if not ip.is_global or ip.is_multicast:
                 return PolicyDecision(
-                    False, f"host {host!r} resolves to private/link-local address {ip}"
+                    False, f"host {host!r} resolves to non-global/multicast address {ip}"
                 )
+        # NOTE: This check resolves DNS at validation time. The actual HTTP client
+        # (httpx) resolves DNS independently at connection time, creating a TOCTOU
+        # window vulnerable to DNS rebinding. This guard provides defense-in-depth
+        # but cannot prevent rebinding alone. The egress host allowlist is the
+        # primary control; this SSRF check is secondary.
         if host not in self._egress:
             return PolicyDecision(False, f"host {host!r} not in egress allowlist")
         return PolicyDecision(True)
@@ -107,4 +112,9 @@ class SecurityPolicy:
             rest = source[len("git+https") :]
             if not rest.startswith("://") or "git@" in source:
                 return PolicyDecision(False, "only public https git URLs are allowed")
+            # Validate the git host through the egress check (SSRF + allowlist)
+            url = source[len("git+") :]  # strip "git+" prefix to get https:// URL
+            egress_decision = self.check_egress(url)
+            if not egress_decision:
+                return PolicyDecision(False, f"git host rejected: {egress_decision.reason}")
         return PolicyDecision(True)

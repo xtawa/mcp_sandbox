@@ -68,7 +68,7 @@ def test_egress_blocked(policy):
 def test_egress_blocks_private_ranges(policy):
     d = policy.check_egress("http://169.254.169.254/latest/meta-data/")
     assert not d.allowed
-    assert "private" in d.reason.lower() or "link-local" in d.reason.lower()
+    assert "non-global" in d.reason.lower() or "multicast" in d.reason.lower()
 
 
 def test_mcp_source_allowed(policy):
