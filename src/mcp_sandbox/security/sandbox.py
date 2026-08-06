@@ -23,6 +23,12 @@ from pathlib import Path
 
 _SHELL_METACHARS = re.compile(r"[;&|`$\n\r<>]|\$\(")
 
+# UTF-8 byte-classification masks used by _truncate to walk back to a leading
+# byte boundary. Continuation bytes are 0b10xxxxxx; the top two bits of a
+# leading byte are anything other than 0b10.
+_UTF8_CONT_MASK = 0xC0
+_UTF8_CONT_TAG = 0x80
+
 # Minimal curated set of host paths bound read-only into the jail. We never
 # bind "/" wholesale: that would expose /etc/shadow, /data catalog DBs, source
 # code under /workspace/src, audit logs, and other secrets to untrusted code.
@@ -48,11 +54,23 @@ class SandboxResult:
 
 
 def _truncate(s: str, limit: int) -> str:
-    """Truncate ``s`` to ``limit`` bytes, appending a marker if cut."""
-    if len(s) <= limit:
+    """Truncate ``s`` to at most ``limit`` UTF-8 bytes, appending a marker if cut.
+
+    Counts bytes (not characters) so the ``max_output_bytes`` budget is
+    honoured exactly for multi-byte output (CJK, emoji). The cut position is
+    walked back to the last UTF-8 leading byte at or before ``limit`` so the
+    returned string never contains a partial multi-byte sequence (which would
+    otherwise be replaced by ``U+FFFD`` and could exceed the byte budget).
+    """
+    encoded = s.encode("utf-8", errors="replace")
+    if len(encoded) <= limit:
         return s
+    cut = limit
+    # Walk back over UTF-8 continuation bytes (0b10xxxxxx) to a leading byte.
+    while cut > 0 and (encoded[cut] & _UTF8_CONT_MASK) == _UTF8_CONT_TAG:
+        cut -= 1
     marker = f"\n[truncated: output exceeded {limit} bytes]\n"
-    return s[:limit] + marker
+    return encoded[:cut].decode("utf-8", errors="replace") + marker
 
 
 class SandboxRunner:

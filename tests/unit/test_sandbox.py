@@ -132,12 +132,23 @@ def test_run_returns_127_when_bwrap_missing(tmp_path, monkeypatch):
 
 
 def test_truncate_helper_limits_output():
-    marker = "\n[truncated: output exceeded 10 bytes]\n"
+    marker_bytes = b"\n[truncated: output exceeded 10 bytes]\n"
     truncated = _truncate("a" * 100, 10)
-    assert len(truncated) <= 10 + len(marker)
+    # _truncate counts UTF-8 bytes, so the returned string's encoded form
+    # must fit within limit + marker bytes.
+    assert len(truncated.encode("utf-8")) <= 10 + len(marker_bytes)
     assert "truncated" in truncated
     # Short input passes through unchanged.
     assert _truncate("short", 10) == "short"
+
+
+def test_truncate_counts_bytes_not_chars_for_multibyte():
+    # 4-byte UTF-8 char (emoji) x 10 = 40 bytes; limit=10 must cut to <=10 bytes
+    # of original content (walked back to last UTF-8 leading byte boundary).
+    truncated = _truncate("\U0001f600" * 10, 10)
+    marker_bytes = b"\n[truncated: output exceeded 10 bytes]\n"
+    assert len(truncated.encode("utf-8")) <= 10 + len(marker_bytes)
+    assert "truncated" in truncated
 
 
 def test_run_truncates_large_stdout(tmp_path, monkeypatch):
@@ -160,6 +171,6 @@ def test_run_truncates_large_stdout(tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", _fake_run)
     result = runner.run(["/bin/ls"], timeout=5)
-    marker = "\n[truncated: output exceeded 4096 bytes]\n"
-    assert len(result.stdout) <= 4096 + len(marker)
+    marker_bytes = b"\n[truncated: output exceeded 4096 bytes]\n"
+    assert len(result.stdout.encode("utf-8")) <= 4096 + len(marker_bytes)
     assert "truncated" in result.stdout
