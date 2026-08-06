@@ -4,6 +4,16 @@ This is the ONLY module allowed to translate a tool argument into a real
 filesystem path. It defeats traversal (..), absolute paths, null bytes, and
 symlinks that escape the workspace root. Based on OWASP File Upload /
 path traversal guidance.
+
+TOCTOU limitation:
+    This resolver validates the path at resolution time. If an attacker can
+    create or modify filesystem entries (e.g., symlinks) between resolution
+    and the caller's open()/read()/write(), the path could escape the root.
+    Callers MUST mitigate this by:
+    - Opening files with O_NOFOLLOW on the final component, OR
+    - Operating via file descriptors (open first, then fstat/read/write), OR
+    - Using openat() with O_NOFOLLOW per path component.
+    The resolver provides path validation; callers provide race-free access.
 """
 from __future__ import annotations
 
@@ -26,16 +36,15 @@ def resolve_safe_path(root: Path, user_path: str) -> Path:
         raise SafePathError("empty path")
 
     root_resolved = root.resolve(strict=False)
-    # Join then resolve; do NOT follow symlinks yet so we can detect escapes.
-    candidate = (root_resolved / Path(user_path)).resolve(strict=False)
-
-    # Check containment using the resolved real path of the parent (symlink check).
-    # If the target exists, .resolve() follows symlinks; if it escapes, reject.
+    # Resolve the joined path, following symlinks to their real targets.
+    # If a symlink points outside root, the resolved path will fail the
+    # containment check below.
     try:
-        real = candidate.resolve(strict=False)
+        real = (root_resolved / Path(user_path)).resolve(strict=False)
     except (OSError, RuntimeError) as exc:
         raise SafePathError(f"cannot resolve path: {exc}") from exc
 
+    # Containment check: the resolved path must be root itself or a descendant.
     if real != root_resolved and root_resolved not in real.parents:
         raise SafePathError(f"path escapes workspace root: {user_path!r}")
     return real

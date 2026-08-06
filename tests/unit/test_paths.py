@@ -33,3 +33,28 @@ def test_symlink_escape_rejected(tmp_path):
 def test_null_byte_rejected(tmp_path):
     with pytest.raises(SafePathError):
         resolve_safe_path(tmp_path, "foo\0bar")
+
+
+def test_empty_path_rejected(tmp_path):
+    with pytest.raises(SafePathError):
+        resolve_safe_path(tmp_path, "")
+
+
+def test_dot_returns_root(tmp_path):
+    p = resolve_safe_path(tmp_path, ".")
+    assert p == tmp_path.resolve()
+
+
+def test_traversal_staying_inside_ok(tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "file.txt").write_text("ok")
+    # sub/../file.txt should resolve to tmp_path/file.txt (inside root)
+    p = resolve_safe_path(tmp_path, "sub/../file.txt")
+    assert p == (tmp_path / "file.txt").resolve()
+
+
+def test_broken_symlink_escape_rejected(tmp_path):
+    link = tmp_path / "broken"
+    link.symlink_to(tmp_path.parent / "nonexistent_outside")
+    with pytest.raises(SafePathError):
+        resolve_safe_path(tmp_path, "broken")
