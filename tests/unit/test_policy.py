@@ -1,8 +1,7 @@
-from pathlib import Path
 
 import pytest
 
-from mcp_sandbox.security.policy import SecurityPolicy, PolicyDecision
+from mcp_sandbox.security.policy import SecurityPolicy
 
 
 @pytest.fixture

@@ -62,7 +62,7 @@ class AuditLogger:
         with self._lock:
             self._fh.close()
 
-    def __enter__(self) -> "AuditLogger":
+    def __enter__(self) -> AuditLogger:
         return self
 
     def __exit__(self, *args: object) -> None:

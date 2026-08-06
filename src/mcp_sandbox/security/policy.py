@@ -30,7 +30,7 @@ class PolicyDecision:
 class SecurityPolicy:
     """Loaded once at startup from default_policy.yaml."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - stable public API; params cannot be collapsed
         self,
         command_allowlist: frozenset[str],
         egress_allowlist: frozenset[str],
@@ -49,7 +49,7 @@ class SecurityPolicy:
         self.max_concurrent_tools = max_concurrent_tools
 
     @classmethod
-    def load(cls, path: Path) -> "SecurityPolicy":
+    def load(cls, path: Path) -> SecurityPolicy:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         return cls(
             command_allowlist=frozenset(raw["command_allowlist"]),
@@ -74,7 +74,7 @@ class SecurityPolicy:
                 )
         return PolicyDecision(True)
 
-    def check_egress(self, url: str) -> PolicyDecision:
+    def check_egress(self, url: str) -> PolicyDecision:  # noqa: PLR0911 - each return is a distinct security gate
         try:
             parsed = urlparse(url)
         except ValueError as exc:

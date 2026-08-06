@@ -1,8 +1,7 @@
-from pathlib import Path
 
 import pytest
 
-from mcp_sandbox.security.paths import resolve_safe_path, SafePathError
+from mcp_sandbox.security.paths import SafePathError, resolve_safe_path
 
 
 def test_normal_path_inside_workspace(tmp_path):
