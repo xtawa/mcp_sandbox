@@ -1,0 +1,52 @@
+# Single source of truth for sandbox allowlists and limits.
+# Editing this file does NOT require a rebuild; it is read at startup.
+version: 1
+
+limits:
+  max_file_bytes: 10485760          # 10 MiB
+  exec_timeout_seconds: 30
+  max_concurrent_tools: 8
+
+command_allowlist:
+  # Bare commands the AI may execute via exec_command.
+  # Arguments are still validated by the shell tool; this gates the binary.
+  - /usr/bin/python3
+  - /usr/bin/pip3
+  - /bin/ls
+  - /bin/cat
+  - /bin/grep
+  - /bin/find
+  - /bin/mkdir
+  - /bin/cp
+  - /bin/mv
+  - /bin/rm
+  - /usr/bin/git
+  - /usr/bin/node
+  - /usr/bin/npm
+
+egress_allowlist:
+  # Hosts the sandbox may contact (installer + export_file + httpx).
+  - pypi.org
+  - files.pythonhosted.org
+  - github.com
+  - raw.githubusercontent.com
+  - registry.npmjs.org
+
+mcp_sources:
+  # Allowed source schemes for install_mcp.
+  - pip
+  - git+https
+
+tool_policy:
+  # Which built-in tools are exposed. Set to false to disable.
+  read_file: true
+  write_file: true
+  list_directory: true
+  stat_file: true
+  delete_file: true
+  make_directory: true
+  transfer_file: true
+  export_file: true
+  exec_command: true
+  list_tools: true
+  sandbox_status: true
